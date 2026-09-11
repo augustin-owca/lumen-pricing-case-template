@@ -91,6 +91,14 @@ with timing:
         unsafe_allow_html=True,
     )
 
+st.markdown("### Build a launch scenario")
+st.info(
+    "The Launch scenario page lets you choose a price, marketing budget, channel mix and launch month. "
+    "It combines the case data into directional estimates for customers, revenue, contribution, CAC payback "
+    "and marketing break-even volume—useful for comparing plans before committing resources."
+)
+st.page_link("pages/4_Launch_scenario.py", label="Open Launch scenario", icon="🚀")
+
 st.markdown("### How to use this dashboard")
 st.info(
     "Start with Pricing, then check Channels and Timing. Each page ends with a short "
