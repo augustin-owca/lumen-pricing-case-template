@@ -6,13 +6,20 @@ import streamlit as st
 
 st.set_page_config(page_title="LUMEN | Timing", page_icon="📅", layout="wide")
 
-st.title("3. Launch-timing decision")
-st.write(
-    "The purpose of this section is to identify when LUMEN should launch in "
-    "Germany so the brand can build momentum before the strongest seasonal demand. "
-    "We use the monthly seasonality and weather dataset, "
-    "`data/seasonality_and_weather.csv`, as the basis for this recommendation."
+st.markdown("""<style>
+.stApp { background: linear-gradient(180deg, #f4f8fb 0%, #ffffff 28%); }
+h1 { color: #163A5F; }
+div[data-testid="stMetric"] { background: #ffffff; border: 1px solid #dbe7ef; padding: 0.8rem; border-radius: 12px; box-shadow: 0 3px 10px rgba(22,58,95,.08); }
+</style>""", unsafe_allow_html=True)
+
+st.markdown(
+    """<div style="background:linear-gradient(120deg,#163A5F,#287C83);color:white;padding:1.35rem 1.6rem;border-radius:18px;margin-bottom:1.25rem;box-shadow:0 8px 22px rgba(22,58,95,.18)">
+    <h1 style="color:white;margin:0">3. Launch-timing decision</h1>
+    <p style="margin:.35rem 0 0;color:#E6F4F3">Build awareness before the strongest seasonal demand arrives.</p>
+    </div>""",
+    unsafe_allow_html=True,
 )
+st.caption("Source: data/seasonality_and_weather.csv · Seasonal demand signal")
 
 data = pd.read_csv("data/seasonality_and_weather.csv")
 data["month_name"] = data["month"].map(lambda month: calendar.month_name[int(month)])
@@ -67,6 +74,7 @@ fig.update_layout(
     margin=dict(t=45, r=45, b=95, l=65),
 )
 st.plotly_chart(fig, use_container_width=True)
+st.caption("Interpretation: the red bar is the recommended preparation month, one month before the demand peak. The dashed line marks average demand.")
 
 st.markdown("### Key timing indicators")
 st.markdown(
@@ -122,12 +130,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown("### Advice for the CFO and CEO")
-st.write(
-    f"July is the demand peak, with a seasonality index of {int(peak_row['seasonality_index_100_avg'])}. "
-    f"We therefore recommend launching in {calendar.month_name[recommended_month]}, one month before the peak, "
-    f"while treating {calendar.month_name[window_start]}–{calendar.month_name[window_end]} as an acceptable window. "
-    "This gives LUMEN time to build awareness and distribution before the strongest demand period. "
-    "The recommendation is based on seasonal demand rather than proof that temperature causes sales, "
-    "and should be reviewed against operational readiness, marketing lead time and launch costs."
+st.markdown("### Advice for the CEO and CFO")
+st.info(
+    f"**CEO:** prepare the launch for {recommended_label} to build momentum before the {calendar.month_name[peak_month]} peak. "
+    f"**CFO:** use {window_start_label}–{window_end_label} as the planning window and release spend only when operations and inventory are ready."
 )
