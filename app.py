@@ -34,7 +34,7 @@ st.markdown(
     """
     <div class="hero">
         <h1>LUMEN · Germany launch dashboard</h1>
-        <p>A practical workspace for three launch decisions: price, channel and timing.</p>
+        <p>A decision-support tool for the CFO and CEO to prepare the Germany launch.</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -43,10 +43,10 @@ st.markdown(
 st.markdown(
     """
     <div class="context">
-        <strong>The case in one minute</strong><br>
-        LUMEN is preparing to enter Germany with a functional beverage. The team must find
-        the right balance between customer adoption, commercial contribution and speed to market.
-        This dashboard turns the available case data into a small set of decision signals.
+        <strong>What this tool does</strong><br>
+        LUMEN is preparing to enter Germany with a functional beverage. This dashboard helps the
+        CFO and CEO compare the key launch trade-offs—adoption, contribution, channel efficiency
+        and timing—so they can make a focused decision before committing resources.
     </div>
     """,
     unsafe_allow_html=True,
@@ -60,7 +60,8 @@ with price:
         <div class="decision-card">
             <div class="step">01 · PRICING</div>
             <h3>What should we charge?</h3>
-            Compare tested price points, acceptance, contribution and competitive position.
+            Compare tested price points, customer comfort, contribution and competitive position.
+            Use the result to set a launch price and a decision gate for the first market test.
         </div>
         """,
         unsafe_allow_html=True,
@@ -71,7 +72,8 @@ with channel:
         <div class="decision-card">
             <div class="step">02 · CHANNELS</div>
             <h3>Where should we sell?</h3>
-            Compare contribution per unit across DTC, retail and gym/office channels.
+            Compare distribution contribution, marketing efficiency and evidence from existing
+            markets to prioritize where launch effort should go.
         </div>
         """,
         unsafe_allow_html=True,
@@ -82,11 +84,20 @@ with timing:
         <div class="decision-card">
             <div class="step">03 · TIMING</div>
             <h3>When should we launch?</h3>
-            Use seasonal demand to prepare the launch before the strongest period.
+            Use seasonal demand and competitor promotions to choose a launch window and prepare
+            inventory, awareness and spend at the right time.
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+st.markdown("### Build a launch scenario")
+st.info(
+    "The Launch scenario page lets you choose a price, marketing budget, channel mix and launch month. "
+    "It combines the case data into directional estimates for customers, revenue, contribution, CAC payback "
+    "and marketing break-even volume—useful for comparing plans before committing resources."
+)
+st.page_link("pages/4_Launch_scenario.py", label="Open Launch scenario", icon="🚀")
 
 st.markdown("### How to use this dashboard")
 st.info(
@@ -97,4 +108,3 @@ st.info(
 st.caption(
     "Case workspace · The results are decision support, not a substitute for a German market test."
 )
-
