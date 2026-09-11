@@ -46,4 +46,16 @@ These questions aren't here to slow you down — they're part of what's being ev
 
 ## Our Approach
 
-*[To be filled in by the team at the end.]*
+This Streamlit dashboard helps LUMEN’s CEO and CFO make data-informed decisions about pricing, marketing channels, timing, and launch planning.
+
+The dashboard includes:
+
+- **Pricing:** compares price scenarios and competitor positioning.
+- **Channels:** analyses CAC, LTV:CAC, marketing funnel performance, and channel economics.
+- **Timing:** evaluates seasonality, weather, and competitor price or promotion changes.
+- **Launch scenario:** simulates a launch using price, marketing budget, channel mix, and launch month assumptions.
+
+The interactive outputs include estimated customers, revenue, CAC payback, blended CAC, and marketing break-even volume. The results are based on the available case datasets and should be validated through real market testing.
+
+Here is the link to the website : 
+https://group-33-lumen-case.streamlit.app/Launch_scenario
