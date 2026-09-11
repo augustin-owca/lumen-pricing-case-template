@@ -1,137 +1,174 @@
 import calendar
 
 import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+
 st.set_page_config(page_title="LUMEN | Timing", page_icon="📅", layout="wide")
 
-st.markdown("""<style>
-.stApp { background: linear-gradient(180deg, #f4f8fb 0%, #ffffff 28%); }
-h1 { color: #163A5F; }
-div[data-testid="stMetric"] { background: #ffffff; border: 1px solid #dbe7ef; padding: 0.8rem; border-radius: 12px; box-shadow: 0 3px 10px rgba(22,58,95,.08); }
-</style>""", unsafe_allow_html=True)
-
 st.markdown(
-    """<div style="background:linear-gradient(120deg,#163A5F,#287C83);color:white;padding:1.35rem 1.6rem;border-radius:18px;margin-bottom:1.25rem;box-shadow:0 8px 22px rgba(22,58,95,.18)">
-    <h1 style="color:white;margin:0">3. Launch-timing decision</h1>
-    <p style="margin:.35rem 0 0;color:#E6F4F3">Build awareness before the strongest seasonal demand arrives.</p>
-    </div>""",
-    unsafe_allow_html=True,
-)
-st.caption("Source: data/seasonality_and_weather.csv · Seasonal demand signal")
-
-data = pd.read_csv("data/seasonality_and_weather.csv")
-data["month_name"] = data["month"].map(lambda month: calendar.month_name[int(month)])
-
-peak_row = data.loc[data["seasonality_index_100_avg"].idxmax()]
-peak_month = int(peak_row["month"])
-recommended_month = peak_month - 1 if peak_month > 1 else 12
-acceptable_window = data[data["seasonality_index_100_avg"] >= 100]
-window_start = int(acceptable_window["month"].min())
-window_end = int(acceptable_window["month"].max())
-
-month_labels = data["month_name"].tolist()
-recommended_label = calendar.month_name[recommended_month]
-window_start_label = calendar.month_name[window_start]
-window_end_label = calendar.month_name[window_end]
-
-st.markdown(
-    "<h3 style='text-align: center;'>German demand seasonality and recommended launch timing</h3>",
-    unsafe_allow_html=True,
-)
-st.caption(
-    f"The green band covers the full acceptable demand window ({window_start_label}–{window_end_label}); "
-    f"the red bar marks the recommended launch month ({recommended_label})."
-)
-
-fig = go.Figure()
-fig.add_vrect(
-    x0=window_start - 1.5,
-    x1=window_end - 0.5,
-    fillcolor="#D9F2E6",
-    opacity=0.6,
-    line_width=0,
-)
-fig.add_trace(
-    go.Bar(
-        x=month_labels,
-        y=data["seasonality_index_100_avg"],
-        marker_color=[
-            "#E45756" if int(month) == recommended_month else "#4C78A8"
-            for month in data["month"]
-        ],
-        hovertemplate="%{x}<br>Seasonality index: %{y}<extra></extra>",
-    )
-)
-fig.add_hline(y=100, line_dash="dash", line_color="#555", annotation_text="Average demand")
-fig.update_layout(
-    xaxis_title="Month",
-    yaxis_title="Seasonality index (average = 100)",
-    xaxis=dict(tickangle=-35, automargin=True),
-    showlegend=False,
-    height=560,
-    margin=dict(t=45, r=45, b=95, l=65),
-)
-st.plotly_chart(fig, use_container_width=True)
-st.caption("Interpretation: the red bar is the recommended preparation month, one month before the demand peak. The dashed line marks average demand.")
-
-st.markdown("### Key timing indicators")
-st.markdown(
-    f"""
+    """
     <style>
-    .timing-kpi-grid {{
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 1rem;
-        max-width: 1100px;
-        margin: 0 auto 1.5rem auto;
-    }}
-    .timing-kpi {{
-        min-height: 125px;
-        padding: 1rem 0.75rem;
-        border-radius: 14px;
-        text-align: center;
-        color: #222831;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }}
-    .timing-kpi-label {{ font-size: 0.9rem; font-weight: 600; margin-bottom: 0.45rem; }}
-    .timing-kpi-value {{ font-size: 1.65rem; font-weight: 700; line-height: 1.15; }}
-    .timing-kpi-peak {{ background: #DCEBFA; }}
-    .timing-kpi-index {{ background: #E8E0F7; }}
-    .timing-kpi-recommended {{ background: #FBE1DE; }}
-    .timing-kpi-window {{ background: #D9F2E6; }}
-    @media (max-width: 800px) {{
-        .timing-kpi-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
-    }}
+    .stApp { background: linear-gradient(180deg, #f4f8fb 0%, #ffffff 34%); }
+    h1, h2, h3 { color: #163A5F; }
+    .hero {
+        background: linear-gradient(120deg, #163A5F, #287C83);
+        color: white; padding: 1.7rem 1.9rem; border-radius: 20px;
+        margin-bottom: 1.2rem; box-shadow: 0 10px 26px rgba(22,58,95,.18);
+    }
+    .hero h1 { color: white; margin: 0; }
+    .hero p { color: #E6F4F3; margin: .4rem 0 0; font-size: 1.05rem; }
+    .kpi-card {
+        background: white; border: 1px solid #dbe7ef; border-top: 5px solid var(--accent);
+        border-radius: 12px; padding: .85rem .6rem; height: 112px; box-sizing: border-box;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        text-align: center; box-shadow: 0 3px 10px rgba(22,58,95,.08);
+        overflow-wrap: anywhere;
+    }
+    .kpi-label { color: #5B6B7A; font-size: .76rem; font-weight: 700; text-transform: uppercase; }
+    .kpi-value { color: #163A5F; font-size: 1.28rem; font-weight: 800; margin-top: .32rem; }
+    .advice {
+        background: #eef7f5; border-left: 5px solid #287C83; border-radius: 10px;
+        padding: .85rem 1rem; min-height: 105px;
+    }
     </style>
-    <div class="timing-kpi-grid">
-        <div class="timing-kpi timing-kpi-peak">
-            <div class="timing-kpi-label">Peak month</div>
-            <div class="timing-kpi-value">{calendar.month_name[peak_month]}</div>
-        </div>
-        <div class="timing-kpi timing-kpi-index">
-            <div class="timing-kpi-label">Peak index</div>
-            <div class="timing-kpi-value">{int(peak_row["seasonality_index_100_avg"])}</div>
-        </div>
-        <div class="timing-kpi timing-kpi-recommended">
-            <div class="timing-kpi-label">Recommended launch</div>
-            <div class="timing-kpi-value">{recommended_label}</div>
-        </div>
-        <div class="timing-kpi timing-kpi-window">
-            <div class="timing-kpi-label">Acceptable window</div>
-            <div class="timing-kpi-value">{window_start_label}–{window_end_label}</div>
-        </div>
-    </div>
     """,
     unsafe_allow_html=True,
 )
 
-st.markdown("### Advice for the CEO and CFO")
-st.info(
-    f"**CEO:** prepare the launch for {recommended_label} to build momentum before the {calendar.month_name[peak_month]} peak. "
-    f"**CFO:** use {window_start_label}–{window_end_label} as the planning window and release spend only when operations and inventory are ready."
+st.markdown(
+    """
+    <div class="hero">
+        <h1>3. Launch timing decision</h1>
+        <p>Build awareness before the strongest seasonal demand arrives.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
+st.caption("Seasonal demand signal and competitor activity")
+
+seasonality = pd.read_csv("data/seasonality_and_weather.csv")
+competitor = pd.read_csv("data/competitor_price_history.csv", parse_dates=["month"])
+
+peak_row = seasonality.loc[seasonality["seasonality_index_100_avg"].idxmax()]
+peak_month = int(peak_row["month"])
+lead_months = st.slider("Preparation lead time (months)", 1, 3, 1)
+recommended_month = ((peak_month - lead_months - 1) % 12) + 1
+recommended_label = calendar.month_name[recommended_month]
+peak_label = calendar.month_name[peak_month]
+acceptable = seasonality.loc[seasonality["seasonality_index_100_avg"] >= 100]
+window_start = calendar.month_name[int(acceptable["month"].min())]
+window_end = calendar.month_name[int(acceptable["month"].max())]
+
+competitor_options = sorted(competitor["competitor"].unique())
+st.info(
+    "**How to use it**\n\n"
+    "- Move the preparation slider from 1 to 3 months; the recommended launch month moves "
+    "earlier as preparation time increases.\n"
+    "- In the competitor section, select brands to filter the price and promotion chart."
+)
+
+def render_kpi(column, label, value, accent):
+    with column:
+        st.markdown(
+            f'<div class="kpi-card" style="--accent:{accent}">'
+            f'<div class="kpi-label">{label}</div><div class="kpi-value">{value}</div></div>',
+            unsafe_allow_html=True,
+        )
+
+
+kpis = st.columns(4)
+render_kpi(kpis[0], "Demand peak", peak_label, "#287C83")
+render_kpi(kpis[1], "Peak index", f"{peak_row['seasonality_index_100_avg']:.0f}", "#4C78A8")
+render_kpi(kpis[2], "Recommended launch", recommended_label, "#D97757")
+render_kpi(kpis[3], "Planning window", f"{window_start}–{window_end}", "#8E6BBE")
+
+st.markdown("### Seasonal demand")
+seasonality["month_name"] = seasonality["month"].map(lambda month: calendar.month_name[int(month)])
+seasonality_fig = go.Figure()
+seasonality_fig.add_trace(
+    go.Bar(
+        x=seasonality["month_name"],
+        y=seasonality["seasonality_index_100_avg"],
+        marker_color=[
+            "#D97757" if int(month) == recommended_month else "#4C78A8"
+            for month in seasonality["month"]
+        ],
+        hovertemplate="%{x}<br>Demand index: %{y}<extra></extra>",
+    )
+)
+seasonality_fig.add_hline(
+    y=100, line_dash="dash", line_color="#6B7280", annotation_text="Average demand"
+)
+seasonality_fig.update_layout(
+    height=440,
+    margin=dict(t=25, r=25, b=65, l=60),
+    xaxis_title="Month",
+    yaxis_title="Seasonality index",
+    showlegend=False,
+)
+st.plotly_chart(seasonality_fig, use_container_width=True)
+st.caption(
+    f"Interpretation: launch in {recommended_label}, {lead_months} month(s) before the "
+    f"{peak_label} peak, so awareness and distribution are ready when demand rises."
+)
+
+st.markdown("### Competitor price and promotion")
+selected_competitors = st.multiselect(
+    "Competitors to display",
+    competitor_options,
+    default=competitor_options,
+)
+if not selected_competitors:
+    selected_competitors = competitor_options
+
+competitor_view = competitor.loc[
+    competitor["competitor"].isin(selected_competitors)
+].copy()
+competitor_fig = px.line(
+    competitor_view,
+    x="month",
+    y="shelf_price_eur",
+    color="competitor",
+    markers=True,
+    labels={"month": "Month", "shelf_price_eur": "Shelf price (€)", "competitor": "Competitor"},
+    color_discrete_sequence=["#163A5F", "#287C83", "#D97757", "#8E6BBE"],
+)
+promo_view = competitor_view.loc[competitor_view["promo_active"]]
+for _, row in promo_view.iterrows():
+    competitor_fig.add_trace(
+        go.Scatter(
+            x=[row["month"]],
+            y=[row["shelf_price_eur"]],
+            mode="markers",
+            marker=dict(size=12, color="#D97757", symbol="diamond"),
+            name="Promotion",
+            showlegend=False,
+            hovertemplate=f"{row['competitor']}<br>Promotion<extra></extra>",
+        )
+    )
+competitor_fig.update_layout(height=420, margin=dict(t=25, r=25, b=65, l=60))
+st.plotly_chart(competitor_fig, use_container_width=True)
+st.caption(
+    "Interpretation: diamond markers indicate promotions. Avoid entering a crowded discount period "
+    "unless LUMEN has a clear product or price advantage."
+)
+
+st.markdown("### Advice for the CEO and CFO")
+ceo, cfo = st.columns(2)
+with ceo:
+    st.markdown(
+        f'<div class="advice"><strong>CEO · launch momentum</strong><br>'
+        f"Use {recommended_label} as the target launch month and build awareness ahead of the "
+        f"{peak_label} demand peak.</div>",
+        unsafe_allow_html=True,
+    )
+with cfo:
+    st.markdown(
+        f'<div class="advice"><strong>CFO · readiness gate</strong><br>'
+        f"Keep the {window_start}–{window_end} period flexible, but release inventory and media "
+        "spend only when operational readiness is confirmed.</div>",
+        unsafe_allow_html=True,
+    )

@@ -8,22 +8,27 @@ st.set_page_config(page_title="LUMEN | Pricing", page_icon="💶", layout="wide"
 st.markdown(
     """
     <style>
-    .stApp { background: linear-gradient(180deg, #f4f8fb 0%, #ffffff 32%); }
+    .stApp { background: linear-gradient(180deg, #f4f8fb 0%, #ffffff 34%); }
     h1, h2, h3 { color: #163A5F; }
     .hero {
         background: linear-gradient(120deg, #163A5F, #287C83);
-        color: white; padding: 1.35rem 1.6rem; border-radius: 18px;
-        margin-bottom: 1.25rem; box-shadow: 0 8px 22px rgba(22,58,95,.18);
+        color: white; padding: 1.7rem 1.9rem; border-radius: 20px;
+        margin-bottom: 1.2rem; box-shadow: 0 10px 26px rgba(22,58,95,.18);
     }
     .hero h1 { color: white; margin: 0; }
-    .hero p { margin: .35rem 0 0; color: #E6F4F3; }
-    div[data-testid="stMetric"] {
-        background: white; border: 1px solid #dbe7ef; padding: .8rem;
-        border-radius: 12px; box-shadow: 0 3px 10px rgba(22,58,95,.08);
+    .hero p { color: #E6F4F3; margin: .4rem 0 0; font-size: 1.05rem; }
+    .kpi-card {
+        background: white; border: 1px solid #dbe7ef; border-top: 5px solid var(--accent);
+        border-radius: 12px; padding: .85rem .6rem; height: 112px; box-sizing: border-box;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        text-align: center; box-shadow: 0 3px 10px rgba(22,58,95,.08);
+        overflow-wrap: anywhere;
     }
+    .kpi-label { color: #5B6B7A; font-size: .76rem; font-weight: 700; text-transform: uppercase; }
+    .kpi-value { color: #163A5F; font-size: 1.28rem; font-weight: 800; margin-top: .32rem; }
     .advice {
         background: #eef7f5; border-left: 5px solid #287C83; border-radius: 10px;
-        padding: .85rem 1rem; margin-top: .5rem;
+        padding: .85rem 1rem; min-height: 105px;
     }
     </style>
     """,
@@ -34,54 +39,86 @@ st.markdown(
     """
     <div class="hero">
         <h1>1. Pricing decision</h1>
-        <p>Find the price that protects acceptance today and contribution tomorrow.</p>
+        <p>Choose the price that balances customer adoption, contribution and competitive position.</p>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
 price_data = pd.read_csv("data/price_test_results.csv")
+sensitivity = pd.read_csv("data/price_sensitivity_survey.csv")
+channel_economics = pd.read_csv("data/channel_economics.csv")
 competitor_data = pd.read_csv("data/competitor_prices_by_channel.csv")
+
 price_names = {1.79: "Reach", 2.19: "Balanced", 2.59: "Premium"}
 price_data["scenario"] = price_data["price_eur"].map(
-    lambda price: f"{price_names[price]} · €{price:.2f}"
+    lambda price: f"{price_names.get(round(price, 2), 'Scenario')} · €{price:.2f}"
 )
-
 comparison = price_data.groupby(["price_eur", "scenario"], as_index=False).agg(
     acceptance=("estimated_acceptance_pct_of_survey", "first"),
     contribution=("unit_contribution_eur", "mean"),
     margin=("contribution_margin_pct", "mean"),
 )
-recommended_price = 2.19
-recommended = comparison.loc[comparison["price_eur"] == recommended_price].iloc[0]
 
-st.success(
-    f"**Base-case recommendation: €{recommended_price:.2f} ({price_names[recommended_price]})** · "
-    f"{recommended['acceptance']:.1f}% tested acceptance and €{recommended['contribution']:.2f} "
-    "average contribution per can."
+st.markdown("### Select your scenario")
+price_options = sorted(price_data["price_eur"].unique())
+
+
+def choose_price(price):
+    st.session_state["pricing_selected_price"] = price
+    for option in price_options:
+        st.session_state[f"pricing_price_{option:.2f}"] = option == price
+
+
+if "pricing_selected_price" not in st.session_state:
+    st.session_state["pricing_selected_price"] = 2.19
+for option in price_options:
+    key = f"pricing_price_{option:.2f}"
+    if key not in st.session_state:
+        st.session_state[key] = option == st.session_state["pricing_selected_price"]
+
+price_checkboxes = st.columns(len(price_options))
+for column, option in zip(price_checkboxes, price_options):
+    with column:
+        st.checkbox(
+            f"{price_names.get(round(option, 2), 'Scenario')} · €{option:.2f}",
+            key=f"pricing_price_{option:.2f}",
+            on_change=choose_price,
+            args=(option,),
+        )
+
+selected_price = st.session_state["pricing_selected_price"]
+st.info(
+    "**How to use it**\n\n"
+    "- Tick one price case to update the KPIs and price trade-off charts.\n"
+    "- Choose a distribution channel to see its contribution at the selected price."
 )
-
-st.markdown("### Selected scenario")
-st.caption("Change the scenario to see the commercial and financial implications.")
-selected_price = st.radio(
-    "Retail price per 330ml can",
-    sorted(price_data["price_eur"].unique()),
-    index=1,
-    horizontal=True,
-    format_func=lambda price: f"{price_names[price]} · €{price:.2f}",
+selected_channel = st.selectbox(
+    "Distribution channel for the detailed view",
+    sorted(channel_economics["channel"].unique()),
 )
 selected = comparison.loc[comparison["price_eur"] == selected_price].iloc[0]
+selected_channel_row = price_data.loc[
+    (price_data["channel"] == selected_channel)
+    & (price_data["price_eur"] == selected_price)
+].iloc[0]
 
-kpis = st.columns(3)
-kpis[0].metric("Tested acceptance", f"{selected['acceptance']:.1f}%")
-kpis[1].metric("Avg. contribution / can", f"€{selected['contribution']:.2f}")
-kpis[2].metric("Avg. contribution margin", f"{selected['margin']:.1f}%")
+def render_kpi(column, label, value, accent):
+    with column:
+        st.markdown(
+            f'<div class="kpi-card" style="--accent:{accent}">'
+            f'<div class="kpi-label">{label}</div><div class="kpi-value">{value}</div></div>',
+            unsafe_allow_html=True,
+        )
+
+
+kpis = st.columns(4)
+render_kpi(kpis[0], "Tested acceptance", f"{selected['acceptance']:.1f}%", "#287C83")
+render_kpi(kpis[1], "Avg. contribution", f"€{selected['contribution']:.2f}", "#4C78A8")
+render_kpi(kpis[2], "Channel contribution", f"€{selected_channel_row['unit_contribution_eur']:.2f}", "#D97757")
+render_kpi(kpis[3], "Contribution margin", f"{selected['margin']:.1f}%", "#8E6BBE")
 
 st.markdown("### Price trade-off")
-st.caption(
-    "Each point is one tested price. The ideal direction is up and right: higher contribution "
-    "with higher acceptance."
-)
 tradeoff = comparison.copy()
 tradeoff["label"] = tradeoff.apply(
     lambda row: f"{price_names[row['price_eur']]} · €{row['price_eur']:.2f}", axis=1
@@ -102,43 +139,57 @@ tradeoff_fig = px.scatter(
         "acceptance": "Tested acceptance (%)",
         "contribution": "Average contribution (€ / can)",
         "margin": "Contribution margin (%)",
-        "label": "Price scenario",
+        "label": "Scenario",
     },
 )
 tradeoff_fig.update_traces(textposition="top center", marker_line_color="white", marker_line_width=1)
-tradeoff_fig.update_layout(
-    height=430, margin=dict(t=25, r=25, b=60, l=60), legend_title_text="Scenario"
-)
+tradeoff_fig.update_layout(height=430, margin=dict(t=25, r=25, b=60, l=60))
 st.plotly_chart(tradeoff_fig, use_container_width=True)
 st.caption(
-    "Interpretation: €1.79 maximizes acceptance, while €2.59 maximizes contribution. "
-    "€2.19 is the practical middle ground for a first launch test."
+    "Interpretation: €1.79 maximizes acceptance, €2.59 maximizes contribution, and €2.19 is the "
+    "most balanced starting point."
 )
 
-st.markdown("### Contribution by channel")
-channel_data = price_data.pivot(
-    index="channel", columns="price_eur", values="unit_contribution_eur"
-).reset_index().melt(id_vars="channel", var_name="price_eur", value_name="contribution")
-channel_data["price"] = channel_data["price_eur"].map(lambda price: f"€{price:.2f}")
-channel_fig = px.bar(
-    channel_data,
-    x="channel",
-    y="contribution",
-    color="price",
-    barmode="group",
-    text_auto=".2f",
-    labels={
-        "channel": "Distribution channel",
-        "contribution": "Contribution (€ / can)",
-        "price": "Retail price",
-    },
-    color_discrete_sequence=["#A9C4D4", "#287C83", "#D97757"],
+st.markdown("### Customer price comfort")
+sensitivity_prices = pd.concat(
+    [
+        pd.Series(range(100, 351), name="price_eur").div(100),
+        pd.Series(comparison["price_eur"].unique(), name="price_eur"),
+    ]
+).drop_duplicates().sort_values()
+sensitivity_curve = pd.DataFrame({"price_eur": sensitivity_prices})
+sensitivity_curve["comfortable_share"] = sensitivity_curve["price_eur"].map(
+    lambda price: (
+        (sensitivity["cheap_eur"] <= price) & (sensitivity["expensive_eur"] >= price)
+    ).mean()
+    * 100
 )
-channel_fig.update_layout(height=430, margin=dict(t=25, r=25, b=70, l=60))
-st.plotly_chart(channel_fig, use_container_width=True)
+sensitivity_curve["price_label"] = sensitivity_curve["price_eur"].map(
+    lambda price: f"€{price:.2f}"
+)
+sensitivity_fig = px.line(
+    sensitivity_curve,
+    x="price_eur",
+    y="comfortable_share",
+    labels={"price_eur": "Price (€)", "comfortable_share": "Survey comfort zone (%)"},
+)
+sensitivity_fig.update_traces(line_color="#287C83", line_width=4)
+for price in sorted(comparison["price_eur"]):
+    row = comparison.loc[comparison["price_eur"] == price].iloc[0]
+    sensitivity_fig.add_scatter(
+        x=[price],
+        y=[sensitivity_curve.loc[sensitivity_curve["price_eur"] == price, "comfortable_share"].iloc[0]],
+        mode="markers+text",
+        text=[price_names[price]],
+        textposition="top center",
+        marker=dict(size=11, color="#D97757" if price == selected_price else "#163A5F"),
+        showlegend=False,
+    )
+sensitivity_fig.update_layout(height=390, margin=dict(t=25, r=25, b=60, l=60))
+st.plotly_chart(sensitivity_fig, use_container_width=True)
 st.caption(
-    "Interpretation: DTC Online produces the highest contribution at each tested price; "
-    "the channel choice still requires a separate volume and acquisition analysis."
+    "Interpretation: the curve estimates the share of respondents whose 'cheap' and 'expensive' "
+    "thresholds contain each price. It is a comfort signal, not a demand forecast."
 )
 
 st.markdown("### Competitive price position")
@@ -168,24 +219,23 @@ competition_fig = px.bar(
 competition_fig.update_layout(height=430, margin=dict(t=25, r=25, b=70, l=60))
 st.plotly_chart(competition_fig, use_container_width=True)
 st.caption(
-    "Interpretation: use this chart to check whether the selected LUMEN price is accessible, "
-    "market-aligned or clearly premium versus single-can competitors."
+    "Interpretation: use this comparison to decide whether LUMEN is entering as accessible premium "
+    "or positioning clearly above the market."
 )
 
 st.markdown("### Advice for the CEO and CFO")
-advice_left, advice_right = st.columns(2)
-with advice_left:
-    st.markdown("**CEO · position and launch**")
+ceo, cfo = st.columns(2)
+with ceo:
     st.markdown(
-        '<div class="advice">Start with <strong>€2.19</strong>: it signals quality without '
-        "cutting off as much trial as €2.59. Keep €1.79 as a controlled introductory test.</div>",
+        '<div class="advice"><strong>CEO · positioning</strong><br>'
+        "Use €2.19 as the launch reference: it keeps a premium signal while preserving more trial "
+        "potential than €2.59.</div>",
         unsafe_allow_html=True,
     )
-with advice_right:
-    st.markdown("**CFO · economics and risk**")
+with cfo:
     st.markdown(
-        '<div class="advice">Use €2.19 as the base case, but approve scale only after observed '
-        "conversion, repeat purchase and channel costs confirm the contribution assumption.</div>",
+        '<div class="advice"><strong>CFO · decision gate</strong><br>'
+        "Approve €2.19 as the base case, then scale only if observed conversion and repeat purchase "
+        "support the contribution assumptions.</div>",
         unsafe_allow_html=True,
     )
-
